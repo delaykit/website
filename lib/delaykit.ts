@@ -30,7 +30,7 @@ export function dk(): Promise<DelayKitBundle> {
       const scheduler = new PosthookScheduler({
         apiKey: process.env.POSTHOOK_API_KEY!,
         signingKey: process.env.POSTHOOK_SIGNING_KEY!,
-        basePath: "/api/webhooks/fire",
+        basePath: "/api/delaykit",
       });
 
       const instance = new DelayKit({ store, scheduler });
