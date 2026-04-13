@@ -4,6 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Poller } from "./poller";
 
 const WAIT_MS = 30 * 60 * 1000;
+// Briefly lock the button after each click. Prevents double-fires and
+// holds the UI steady until the CDN cache has refreshed past the click —
+// any poll responses that arrive during this window are discarded, so a
+// cached pre-click snapshot can't flicker over the optimistic state.
+const COOLDOWN_MS = 3000;
 
 function formatCountdown(remainingMs: number | null): string {
   if (remainingMs === null || remainingMs <= 0) return "out";
@@ -22,11 +27,9 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
   const [state, setState] = useState<FireState>(initialState);
   // Countdown only needs second-level precision; tick every 1s.
   const [now, setNow] = useState(() => Date.now());
-  const [pressing, setPressing] = useState(false);
+  const [cooling, setCooling] = useState(false);
   const inFlight = useRef(false);
-  // Bumped on every click so stale poll responses (issued before the click
-  // reached the DB) can be discarded when they return late.
-  const generation = useRef(0);
+  const cooldownUntil = useRef(0);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -34,10 +37,8 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
   }, []);
 
   const applyServerState = useCallback(
-    (data: { current: FireState }, gen: number) => {
-      // Drop snapshots from fetches that were issued before the most recent
-      // click — their DB view predates our optimistic update.
-      if (gen < generation.current) return;
+    (data: { current: FireState }, opts?: { fromClick?: boolean }) => {
+      if (!opts?.fromClick && Date.now() < cooldownUntil.current) return;
       setState((prev) =>
         prev.clicks === data.current.clicks &&
         prev.firesAt === data.current.firesAt
@@ -49,10 +50,9 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
   );
 
   const refresh = useCallback(async () => {
-    const gen = generation.current;
     try {
       const res = await fetch("/api/state", { cache: "no-store" });
-      if (res.ok) applyServerState(await res.json(), gen);
+      if (res.ok) applyServerState(await res.json());
     } catch {
       // ignore
     }
@@ -60,11 +60,10 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
 
   const click = useCallback(async () => {
     if (inFlight.current) return;
+    if (Date.now() < cooldownUntil.current) return;
     inFlight.current = true;
-    setPressing(true);
-
-    generation.current += 1;
-    const gen = generation.current;
+    cooldownUntil.current = Date.now() + COOLDOWN_MS;
+    setCooling(true);
 
     // Optimistic update — the server response will reconcile.
     setState((prev) => ({
@@ -74,12 +73,12 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
 
     try {
       const res = await fetch("/api/click", { method: "POST" });
-      if (res.ok) applyServerState(await res.json(), gen);
+      if (res.ok) applyServerState(await res.json(), { fromClick: true });
     } catch {
       // ignore
     } finally {
       inFlight.current = false;
-      setTimeout(() => setPressing(false), 200);
+      setTimeout(() => setCooling(false), COOLDOWN_MS);
     }
   }, [applyServerState]);
 
@@ -93,7 +92,8 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
     <button
       type="button"
       onClick={click}
-      className={`fire-badge ${pressing ? "pressing" : ""} ${isAlive ? "" : "is-out"}`}
+      disabled={cooling}
+      className={`fire-badge ${cooling ? "cooling" : ""} ${isAlive ? "" : "is-out"}`}
       aria-label={isAlive ? "Tend the fire" : "Light the fire"}
       data-tooltip={tooltip}
     >

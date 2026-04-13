@@ -301,8 +301,26 @@ body::before {
   outline: none;
 }
 
-.fire-badge.pressing {
+.fire-badge.cooling {
   transform: translateY(1px);
+  opacity: 0.85;
+  cursor: default;
+}
+
+.fire-badge:disabled {
+  cursor: default;
+}
+
+/* Suppress hover flourishes while the badge is cooling — no tooltip, no
+   background swap. The click already spoke for itself. */
+.fire-badge.cooling:hover,
+.fire-badge.cooling:focus-visible {
+  background: transparent;
+  border-color: var(--color-rule);
+}
+
+.fire-badge.cooling::after {
+  display: none;
 }
 
 .fire-badge.is-out {
@@ -352,6 +370,22 @@ body::before {
   opacity: 0.55;
   /* Pulse to draw attention — subtle, says "still here, light me" */
   animation: ember-pulse 2.4s ease-in-out infinite;
+}
+
+/* One-shot flare when the fire is tended — overshoots and settles back.
+   Overrides the ambient flicker for the cooldown duration. */
+.fire-badge.cooling .flame-mark-alive,
+.fire-badge.cooling .flame-mark-out {
+  animation: flame-flare 3s ease-out forwards;
+  color: var(--color-stamp);
+  opacity: 1;
+}
+
+@keyframes flame-flare {
+  0% { transform: scale(1); }
+  12% { transform: scale(1.28); }
+  30% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 @keyframes ember-pulse {
