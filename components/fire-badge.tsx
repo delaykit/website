@@ -24,28 +24,35 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
   const [now, setNow] = useState(() => Date.now());
   const [pressing, setPressing] = useState(false);
   const inFlight = useRef(false);
+  // Bumped on every click so stale poll responses (issued before the click
+  // reached the DB) can be discarded when they return late.
+  const generation = useRef(0);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  // Short-circuit setState when the new snapshot is structurally equal
-  // to the previous one — avoids re-rendering the whole badge on every
-  // 2s poll when nothing has actually changed.
-  const applyServerState = useCallback((data: { current: FireState }) => {
-    setState((prev) =>
-      prev.clicks === data.current.clicks &&
-      prev.firesAt === data.current.firesAt
-        ? prev
-        : { clicks: data.current.clicks, firesAt: data.current.firesAt },
-    );
-  }, []);
+  const applyServerState = useCallback(
+    (data: { current: FireState }, gen: number) => {
+      // Drop snapshots from fetches that were issued before the most recent
+      // click — their DB view predates our optimistic update.
+      if (gen < generation.current) return;
+      setState((prev) =>
+        prev.clicks === data.current.clicks &&
+        prev.firesAt === data.current.firesAt
+          ? prev
+          : { clicks: data.current.clicks, firesAt: data.current.firesAt },
+      );
+    },
+    [],
+  );
 
   const refresh = useCallback(async () => {
+    const gen = generation.current;
     try {
       const res = await fetch("/api/state", { cache: "no-store" });
-      if (res.ok) applyServerState(await res.json());
+      if (res.ok) applyServerState(await res.json(), gen);
     } catch {
       // ignore
     }
@@ -56,6 +63,9 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
     inFlight.current = true;
     setPressing(true);
 
+    generation.current += 1;
+    const gen = generation.current;
+
     // Optimistic update — the server response will reconcile.
     setState((prev) => ({
       clicks: prev.clicks + 1,
@@ -64,7 +74,7 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
 
     try {
       const res = await fetch("/api/click", { method: "POST" });
-      if (res.ok) applyServerState(await res.json());
+      if (res.ok) applyServerState(await res.json(), gen);
     } catch {
       // ignore
     } finally {
