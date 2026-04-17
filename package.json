@@ -3,16 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/delaykit-migrate.mjs",
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "drizzle-kit push",
+    "postbuild": "node scripts/delaykit-migrate.mjs && drizzle-kit push",
     "start": "next start",
     "lint": "eslint",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@posthook/node": "^1.2.0",
-    "delaykit": "^0.3.0",
+    "delaykit": "^0.6.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.3",
     "pg": "^8.20.0",
