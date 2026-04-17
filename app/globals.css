@@ -608,8 +608,8 @@ body::before {
   align-items: baseline;
   gap: 0.85rem;
   font-family: var(--font-serif);
-  font-size: 1.05rem;
-  line-height: 1.55;
+  font-size: 1.2rem;
+  line-height: 1.6;
   color: var(--color-ink-soft);
 }
 
@@ -960,6 +960,7 @@ body::before {
 
 .hero-code {
   margin: 0 !important;
+  width: 100%;
   font-size: 0.82rem !important;
   padding: 1rem 1.2rem !important;
   width: 100%;

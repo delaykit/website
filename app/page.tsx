@@ -32,11 +32,21 @@ await dk.schedule("remind", {
 
 const PROPERTIES: PropertyItem[] = [
   {
-    title: "The store row is the source of truth.",
+    title: "Schedule, debounce, throttle. All per entity, all cancellable.",
     body: (
       <>
-        Your Postgres holds the jobs table and runs migrations on first
-        connect. The scheduler only fires the trigger when it&rsquo;s time.
+        Not just &ldquo;run this at time X.&rdquo; Debounce a burst of edits
+        into one reindex. Throttle notifications to one per hour per user.
+        Cancel any of it if it&rsquo;s no longer needed.
+      </>
+    ),
+  },
+  {
+    title: "Uses the Postgres you already have.",
+    body: (
+      <>
+        No Redis, no managed queue. DelayKit creates its own table and handles
+        migrations automatically.
       </>
     ),
   },
@@ -44,46 +54,34 @@ const PROPERTIES: PropertyItem[] = [
     title: "Jobs survive restarts and deploys.",
     body: (
       <>
-        They&rsquo;re in Postgres, not memory. Crash, deploy, scale
-        &mdash; they don&rsquo;t go away.
+        Postgres-backed, not memory. Crash, redeploy, scale. They&rsquo;re
+        still there.
       </>
     ),
   },
   {
-    title: "Keys, not payloads.",
+    title: "No duplicate pending jobs.",
     body: (
       <>
-        There is no data field. Handlers receive the key and fetch current
-        state when they run. Fresh data, not stale snapshots from scheduling
-        time.
+        Same handler + key won&rsquo;t queue twice. Safe to call from any
+        request handler.
       </>
     ),
   },
   {
-    title: "At most one active job per handler + key.",
+    title: "Retries built in.",
     body: (
       <>
-        Safe to call from request handlers without deduplication logic.
+        Handlers retry on failure with configurable backoff. No extra wiring.
       </>
     ),
   },
   {
-    title: "Swappable schedulers.",
+    title: "Works in dev and on Vercel.",
     body: (
       <>
-        Poll in dev with a long-running process. In production, a Vercel
-        cron calls <code>dk.poll()</code> on your route, or Posthook
-        delivers each job as a webhook. Same handlers, same store.
-      </>
-    ),
-  },
-  {
-    title: "Stalled job recovery.",
-    body: (
-      <>
-        If a process crashes mid-execution, the job stays in Postgres and
-        is reclaimed on the next poll cycle. Handlers should be idempotent
-        as they may re-execute after crash recovery.
+        PollingScheduler locally, Posthook or Vercel Cron in production. Same
+        handlers, same store.
       </>
     ),
   },
@@ -132,9 +130,10 @@ export default function Home() {
       {/* HERO */}
       <section className="hero hero-split reveal reveal-1">
         <div className="hero-left">
-          <h2 className="hero-headline">Run code later in Next.js.</h2>
+          <h2 className="hero-headline">The timing layer for Next.js.</h2>
           <p className="hero-subhead">
-            A setTimeout backed by Postgres — with retries built in.
+            Remind users who haven&rsquo;t activated. Expire trials. Reindex
+            once after edits settle.
           </p>
           <InstallCta
             secondary={
@@ -180,7 +179,7 @@ export default function Home() {
         />
       </section>
 
-      <Colophon lead="The fire keeps to the top of the page." />
+      <Colophon lead="The fire badge is a live DelayKit demo." />
     </main>
   );
 }
