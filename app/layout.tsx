@@ -16,10 +16,26 @@ const jetbrains = JetBrains_Mono({
   weight: ["400", "500", "700"],
 });
 
+const title = "DelayKit. Durable wake-ups for TypeScript apps and agents.";
+const description =
+  "An open-source TypeScript library for durable wake-ups. Reminders, expirations, agent timeouts, retries, debounces. Backed by Postgres or SQLite. Works on Node, Bun, and Vercel.";
+
 export const metadata: Metadata = {
-  title: "DelayKit. Durable wake-ups for TypeScript apps and agents.",
-  description:
-    "An open-source TypeScript library for durable wake-ups. Reminders, expirations, agent timeouts, retries, debounces. Backed by Postgres or SQLite. Works on Node, Bun, and Vercel.",
+  metadataBase: new URL("https://delaykit.dev"),
+  title,
+  description,
+  openGraph: {
+    title,
+    description,
+    url: "https://delaykit.dev",
+    siteName: "DelayKit",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
 };
 
 // Theme override is stored in a cookie so the server can apply it
