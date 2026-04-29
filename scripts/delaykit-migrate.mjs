@@ -1,10 +1,10 @@
 import { config } from "dotenv";
-import { runMigrations } from "delaykit/postgres";
+import { runPostgresMigrations } from "delaykit/postgres";
 
 config({ path: ".env.local" });
 
 try {
-  await runMigrations(process.env.DATABASE_URL);
+  await runPostgresMigrations(process.env.DATABASE_URL);
   console.log("[delaykit] migrations applied");
 } catch (err) {
   if (isConnRefused(err)) {

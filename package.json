@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@posthook/node": "^1.2.0",
-    "delaykit": "^0.6.0",
+    "delaykit": "^0.7.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.3",
     "pg": "^8.20.0",
