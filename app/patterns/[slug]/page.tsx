@@ -28,7 +28,7 @@ export async function generateMetadata({
   const pattern = getPattern(slug);
   if (!pattern) return { title: "Not found" };
   return {
-    title: `${pattern.seo.title} — DelayKit`,
+    title: `${pattern.seo.title}. DelayKit.`,
     description: pattern.seo.description,
   };
 }

@@ -42,11 +42,11 @@ const PROPERTIES: PropertyItem[] = [
     ),
   },
   {
-    title: "Uses the Postgres you already have.",
+    title: "Postgres or SQLite. Use what fits.",
     body: (
       <>
-        No Redis, no managed queue. DelayKit creates its own table and handles
-        migrations automatically.
+        SQLite for single-process apps, zero infra. Postgres for multi-replica
+        and serverless. Either store auto-migrates on first connect.
       </>
     ),
   },
@@ -54,8 +54,8 @@ const PROPERTIES: PropertyItem[] = [
     title: "Jobs survive restarts and deploys.",
     body: (
       <>
-        Postgres-backed, not memory. Crash, redeploy, scale. They&rsquo;re
-        still there.
+        Durable in Postgres or SQLite, not in memory. Crash, redeploy, scale.
+        They&rsquo;re still there.
       </>
     ),
   },
@@ -63,7 +63,7 @@ const PROPERTIES: PropertyItem[] = [
     title: "No duplicate pending jobs.",
     body: (
       <>
-        Same handler + key won&rsquo;t queue twice. Safe to call from any
+        Same handler and key won&rsquo;t queue twice. Safe to call from any
         request handler.
       </>
     ),
@@ -72,49 +72,104 @@ const PROPERTIES: PropertyItem[] = [
     title: "Retries built in.",
     body: (
       <>
-        Handlers retry on failure with configurable backoff. No extra wiring.
+        Handlers retry on failure with configurable backoff. Stalled jobs from
+        crashed processes recover automatically.
       </>
     ),
   },
   {
-    title: "Works in dev and on Vercel.",
+    title: "Zero runtime dependencies.",
     body: (
       <>
-        PollingScheduler locally, Posthook or Vercel Cron in production. Same
-        handlers, same store.
+        <code>postgres</code>, <code>better-sqlite3</code>, and{" "}
+        <code>@posthook/node</code> are optional peers. Install only what your
+        deployment needs.
       </>
     ),
   },
 ];
 
-const DEPLOY: PropertyItem[] = [
+const STORES: PropertyItem[] = [
   {
-    title: "Vercel + Posthook — managed delivery.",
+    title: "SQLite. Local-first, zero infra.",
     body: (
       <>
-        <a href={LINKS.posthook}>Posthook</a> fires each job as a webhook at
-        the scheduled time. No cron route, no long-running process.
+        For single-process apps: a Bun server, a Node backend on one VPS, a
+        desktop or CLI tool. <code>bun:sqlite</code> is built in. On Node,
+        install <code>better-sqlite3</code> as an optional peer.
       </>
     ),
   },
   {
-    title: "Vercel + cron — self-hosted polling.",
+    title: "Postgres. Multi-replica.",
     body: (
       <>
-        A Vercel Cron route calls <code>dk.poll()</code> on a schedule to
-        drain due jobs, well inside the 10s function limit. No external
-        scheduler required.{" "}
+        For multi-instance apps and serverless. Share an existing pool or pass
+        a connection string. Works with Neon, Supabase, Railway, or any
+        Postgres.
+      </>
+    ),
+  },
+];
+
+const RUNTIMES: PropertyItem[] = [
+  {
+    title: "Long-running process.",
+    body: (
+      <>
+        Node, Bun, Docker, VPS, Fly. Call <code>dk.start()</code> to poll
+        continuously. Works with SQLite or Postgres.
+      </>
+    ),
+  },
+  {
+    title: "Serverless and cron.",
+    body: (
+      <>
+        Vercel, Lambda. A cron route calls <code>dk.poll()</code> on a schedule
+        to drain due jobs, well inside the 10s function limit. Postgres only.{" "}
         <a href={LINKS.githubDeploy}>See the deploy guide&nbsp;↗</a>
       </>
     ),
   },
   {
-    title: "Auto-migrates on first connect.",
+    title: "Posthook webhook delivery.",
     body: (
       <>
-        Works with Neon, Supabase, Railway &mdash; any Postgres. On a
-        long-running server, call <code>dk.start()</code> instead of{" "}
-        <code>dk.poll()</code>.
+        <a href={LINKS.posthook}>Posthook</a> fires each job as a webhook at
+        the scheduled time. No cron, no long-running process.
+      </>
+    ),
+  },
+];
+
+const WHEN_NOT_TO_USE: PropertyItem[] = [
+  {
+    title: "setTimeout if the timer fits in one request.",
+    body: (
+      <>
+        Or if losing the timer on restart is acceptable. The standard library
+        is enough.
+      </>
+    ),
+  },
+  {
+    title: "A queue for short-lived high-throughput jobs.",
+    body: (
+      <>
+        BullMQ and friends are Redis-backed and tuned for that shape. DelayKit
+        composes cleanly with one: schedule with DelayKit, enqueue from the
+        handler.
+      </>
+    ),
+  },
+  {
+    title: "A workflow engine for multi-step pipelines.",
+    body: (
+      <>
+        Inngest and Temporal track state across steps, branch on outcomes,
+        and retry the whole chain when a step fails. DelayKit handles
+        durable waits, but the multi-step flow itself is DIY.
       </>
     ),
   },
@@ -130,10 +185,12 @@ export default function Home() {
       {/* HERO */}
       <section className="hero hero-split reveal reveal-1">
         <div className="hero-left">
-          <h2 className="hero-headline">The timing layer for Next.js.</h2>
+          <h2 className="hero-headline">
+            Durable wake‑ups for TypeScript apps and agents.
+          </h2>
           <p className="hero-subhead">
-            Remind users who haven&rsquo;t activated. Expire trials. Reindex
-            once after edits settle.
+            Reminders, expirations, retries, debounces, and agent resumes.
+            Backed by Postgres or SQLite.
           </p>
           <InstallCta
             secondary={
@@ -166,17 +223,30 @@ export default function Home() {
       <section className="properties reveal reveal-3">
         <SectionHeader
           eyebrow="Properties"
-          title="The shape of it"
+          title="What DelayKit handles"
         />
         <PropertyList items={PROPERTIES} />
       </section>
 
-      {/* WORKS ON VERCEL */}
-      <section className="deploy reveal reveal-3" id="deploy">
-        <SectionHeader eyebrow="Deploy" title="Works on Vercel" />
-        <PropertyList
-          items={DEPLOY}
+      {/* WHERE IT RUNS — STORES */}
+      <section className="deploy reveal reveal-3" id="stores">
+        <SectionHeader eyebrow="Stores" title="Pick a store" />
+        <PropertyList items={STORES} />
+      </section>
+
+      {/* WHERE IT RUNS — RUNTIMES */}
+      <section className="deploy reveal reveal-3" id="runtime">
+        <SectionHeader eyebrow="Runtime shapes" title="Pick a runtime" />
+        <PropertyList items={RUNTIMES} />
+      </section>
+
+      {/* BOUNDARIES */}
+      <section className="properties reveal reveal-3" id="boundaries">
+        <SectionHeader
+          eyebrow="Boundaries"
+          title="When not to use it"
         />
+        <PropertyList items={WHEN_NOT_TO_USE} />
       </section>
 
       <Colophon lead="The fire badge is a live DelayKit demo." />

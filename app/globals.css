@@ -205,6 +205,14 @@ body::before {
   border-bottom: 1px solid var(--color-rule);
 }
 
+@media (max-width: 759px) {
+  /* On phones, tighten the gap between nav and hero so the page
+     doesn't lead with empty space. Desktop keeps the wider rhythm. */
+  .nav-bar {
+    margin-bottom: 1.75rem;
+  }
+}
+
 @media (max-width: 480px) {
   /* On the smallest screens, the wordmark gets out of the way so the
      fire badge has room to breathe. Icons and badge stay visible. */
@@ -520,7 +528,7 @@ body::before {
   background: var(--color-paper-dark);
   border: 1px solid var(--color-rule);
   padding: 0.55rem 0.75rem;
-  overflow-x: auto;
+  overflow: hidden;
   white-space: nowrap;
 }
 
@@ -897,29 +905,10 @@ body::before {
   min-width: 0;
 }
 
-/* On mobile, the code block sits between the tagline and the CTAs
-   (matches the previous single-column reading order). */
-@media (max-width: 759px) {
-  .hero-left {
-    display: contents;
-  }
-  .hero-right {
-    order: 1;
-  }
-  .hero-headline,
-  .hero-subhead {
-    order: 0;
-  }
-  .install-line,
-  .hero-actions {
-    order: 2;
-  }
-}
-
 .hero-headline {
   font-family: var(--font-serif);
   font-weight: 600;
-  font-size: clamp(2.25rem, 4.8vw, 3.4rem);
+  font-size: clamp(1.8rem, 4.8vw, 3.4rem);
   line-height: 1.05;
   letter-spacing: -0.02em;
   margin: 0 0 0.85rem;
@@ -970,6 +959,15 @@ body::before {
   .hero-code {
     font-size: 0.88rem !important;
     padding: 1.15rem 1.35rem !important;
+  }
+}
+
+/* On phones, shrink the code so the longest lines (e.g. await
+   sendEmail(...)) fit without clipping at the right edge. */
+@media (max-width: 480px) {
+  .hero-code {
+    font-size: 0.7rem !important;
+    padding: 0.85rem 1rem !important;
   }
 }
 
@@ -1086,6 +1084,41 @@ body::before {
 
 .hero-down:hover {
   color: var(--color-stamp);
+}
+
+/* On mobile, stack as: tagline → code → CTA. Hide install lines on
+   phones (you can't run npm install from a phone). Lift the desktop
+   two-column text-wrap and max-width constraints so the copy fills
+   the viewport. Block sits after every base rule it overrides so
+   the cascade picks it up on a specificity tie. */
+@media (max-width: 759px) {
+  .hero-split {
+    gap: 1.25rem;
+  }
+  .hero-left {
+    display: contents;
+  }
+  .hero-headline,
+  .hero-subhead {
+    order: 0;
+    margin-bottom: 0;
+  }
+  .hero-headline {
+    text-wrap: wrap;
+  }
+  .hero-subhead {
+    max-width: none;
+    text-wrap: pretty;
+  }
+  .hero-right {
+    order: 1;
+  }
+  .hero-split .install-line {
+    display: none;
+  }
+  .hero-actions {
+    order: 2;
+  }
 }
 
 /* ---- COLOPHON / FOOTER ---- */

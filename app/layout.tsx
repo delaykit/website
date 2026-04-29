@@ -17,9 +17,9 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DelayKit — Run code later in Next.js. Without cron or a queue.",
+  title: "DelayKit. Durable wake-ups for TypeScript apps and agents.",
   description:
-    "An open-source TypeScript library for durable scheduled actions in Next.js. Reminders, expirations, debounce, retries — backed by your own Postgres. Works in next dev, deploys to Vercel.",
+    "An open-source TypeScript library for durable wake-ups. Reminders, expirations, agent timeouts, retries, debounces. Backed by Postgres or SQLite. Works on Node, Bun, and Vercel.",
 };
 
 // Theme override is stored in a cookie so the server can apply it

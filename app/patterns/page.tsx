@@ -9,9 +9,9 @@ import { patterns } from "@/lib/patterns";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Patterns — DelayKit",
+  title: "Patterns. DelayKit.",
   description:
-    "A catalog of things you can do with DelayKit. Reminders, expirations, debounce, throttle, retries, cleanup — each with concrete code.",
+    "A catalog of things you can do with DelayKit. Reminders, expirations, agent timeouts, debounce, throttle, retries, and cleanup. Each with concrete code.",
 };
 
 export default function PatternsIndex() {
