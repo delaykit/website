@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/delaykit-migrate.mjs",
+    "predev": "node scripts/db-up.mjs && node scripts/delaykit-migrate.mjs",
     "dev": "next dev",
     "build": "next build",
     "postbuild": "node scripts/delaykit-migrate.mjs && drizzle-kit push",
