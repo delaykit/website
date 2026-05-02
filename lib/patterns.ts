@@ -482,7 +482,7 @@ await dk.schedule("refresh-google", {
 // handler refreshes, persists, reschedules.
 // Google may rotate the refresh_token. fall back to the stored
 // one if the refresh response omits it (common case).
-dk.handle("refresh-google", async ({ key }) => {
+dk.handle("refresh-google", async ({ key, reschedule }) => {
   const stored = await db.googleTokens.find(key);
   oauth2Client.setCredentials({ refresh_token: stored.refresh_token });
 
@@ -494,10 +494,7 @@ dk.handle("refresh-google", async ({ key }) => {
     expiry_date: credentials.expiry_date,
   });
 
-  await dk.schedule("refresh-google", {
-    key,
-    at: new Date(credentials.expiry_date - 5 * 60 * 1000),
-  });
+  reschedule({ at: new Date(credentials.expiry_date - 5 * 60 * 1000) });
 });`,
       },
       {
@@ -505,7 +502,7 @@ dk.handle("refresh-google", async ({ key }) => {
         source: `// Slack v2 with token rotation enabled. the refresh_token is
 // single-use and rotates on every call, so persist both tokens
 // or the next renewal will fail.
-dk.handle("refresh-slack", async ({ key }) => {
+dk.handle("refresh-slack", async ({ key, reschedule }) => {
   const stored = await db.slackTokens.find(key);
 
   const res = await fetch("https://slack.com/api/oauth.v2.access", {
@@ -525,10 +522,7 @@ dk.handle("refresh-slack", async ({ key }) => {
   });
 
   // renew at 90% of the new access token's lifetime
-  await dk.schedule("refresh-slack", {
-    key,
-    delay: \`\${Math.floor(data.expires_in * 0.9)}s\`,
-  });
+  reschedule({ delay: \`\${Math.floor(data.expires_in * 0.9)}s\` });
 });`,
       },
     ],
@@ -565,7 +559,7 @@ await dk.schedule("check-replicate", {
 
 // handler reschedules itself until Replicate reports a terminal status.
 // Replicate's terminal set is succeeded, failed, canceled.
-dk.handle("check-replicate", async ({ key }) => {
+dk.handle("check-replicate", async ({ key, reschedule }) => {
   const prediction = await replicate.predictions.get(key);
   if (["succeeded", "failed", "canceled"].includes(prediction.status)) {
     await onPredictionDone(prediction);
@@ -579,30 +573,30 @@ dk.handle("check-replicate", async ({ key }) => {
     return;
   }
 
-  await dk.schedule("check-replicate", { key, delay: "2m" });
+  reschedule({ delay: "2m" });
 });`,
       },
       {
         label: "OpenAI batch: same shape, different terminal statuses",
-        source: `dk.handle("check-batch", async ({ key }) => {
+        source: `dk.handle("check-batch", async ({ key, reschedule }) => {
   const batch = await openai.batches.retrieve(key);
   if (["completed", "failed", "expired", "cancelled"].includes(batch.status)) {
     await onBatchDone(batch);
     return;
   }
   // batch jobs run for hours, so check less often than predictions
-  await dk.schedule("check-batch", { key, delay: "5m" });
+  reschedule({ delay: "5m" });
 });`,
       },
       {
         label: "Mux: poll an asset until it's ready",
-        source: `dk.handle("check-asset", async ({ key }) => {
+        source: `dk.handle("check-asset", async ({ key, reschedule }) => {
   const asset = await mux.video.assets.retrieve(key);
   if (asset.status === "ready" || asset.status === "errored") {
     await onAssetReady(asset);
     return;
   }
-  await dk.schedule("check-asset", { key, delay: "30s" });
+  reschedule({ delay: "30s" });
 });`,
       },
     ],
