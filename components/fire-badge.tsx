@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Poller } from "./poller";
 
 const WAIT_MS = 30 * 60 * 1000;
 // Briefly lock the button after each click. Prevents double-fires and
@@ -9,13 +8,15 @@ const WAIT_MS = 30 * 60 * 1000;
 // any poll responses that arrive during this window are discarded, so a
 // cached pre-click snapshot can't flicker over the optimistic state.
 const COOLDOWN_MS = 3000;
+// Coalesce bursts of refresh signals (e.g. cursor entering and re-entering
+// the badge) into at most one fetch per second.
+const REFRESH_THROTTLE_MS = 1000;
 
-function formatCountdown(remainingMs: number | null): string {
-  if (remainingMs === null || remainingMs <= 0) return "out";
-  const totalSec = Math.floor(remainingMs / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
+function describe(firesAt: number | null, now: number): string {
+  if (firesAt === null || firesAt <= now) return "out";
+  const min = Math.floor((firesAt - now) / 60000);
+  if (min < 1) return "<1m left";
+  return `${min}m left`;
 }
 
 type FireState = {
@@ -25,16 +26,15 @@ type FireState = {
 
 export function FireBadge({ initialState }: { initialState: FireState }) {
   const [state, setState] = useState<FireState>(initialState);
-  // Countdown only needs second-level precision; tick every 1s.
+  // `now` is intentionally not on a timer. We bump it on user signals
+  // (visibility change / window focus / button hover / click), which is
+  // when the displayed time actually needs to be fresh. An idle page
+  // does zero per-second work.
   const [now, setNow] = useState(() => Date.now());
   const [cooling, setCooling] = useState(false);
   const inFlight = useRef(false);
   const cooldownUntil = useRef(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+  const lastRefresh = useRef(0);
 
   const applyServerState = useCallback(
     (data: { current: FireState }, opts?: { fromClick?: boolean }) => {
@@ -50,6 +50,12 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
   );
 
   const refresh = useCallback(async () => {
+    const t = Date.now();
+    if (t - lastRefresh.current < REFRESH_THROTTLE_MS) return;
+    if (t < cooldownUntil.current) return;
+    lastRefresh.current = t;
+    setNow(t);
+    if (typeof document !== "undefined" && document.hidden) return;
     try {
       const res = await fetch("/api/state", { cache: "no-store" });
       if (res.ok) applyServerState(await res.json());
@@ -57,6 +63,19 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
       // ignore
     }
   }, [applyServerState]);
+
+  // Refresh when the user re-engages with the page — no idle polling.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (!document.hidden) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [refresh]);
 
   const click = useCallback(async () => {
     if (inFlight.current) return;
@@ -66,10 +85,12 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
     setCooling(true);
 
     // Optimistic update — the server response will reconcile.
+    const t = Date.now();
     setState((prev) => ({
       clicks: prev.clicks + 1,
-      firesAt: new Date(Date.now() + WAIT_MS).toISOString(),
+      firesAt: new Date(t + WAIT_MS).toISOString(),
     }));
+    setNow(t);
 
     try {
       const res = await fetch("/api/click", { method: "POST" });
@@ -83,8 +104,8 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
   }, [applyServerState]);
 
   const firesAt = state.firesAt ? new Date(state.firesAt).getTime() : null;
-  const remainingMs = firesAt ? Math.max(0, firesAt - now) : null;
-  const isAlive = remainingMs !== null && remainingMs > 0;
+  const isAlive = firesAt !== null && firesAt > now;
+  const display = describe(firesAt, now);
 
   const tooltip = isAlive ? "tend the fire" : "light the fire";
 
@@ -92,12 +113,13 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
     <button
       type="button"
       onClick={click}
+      onMouseEnter={refresh}
+      onFocus={refresh}
       disabled={cooling}
       className={`fire-badge ${cooling ? "cooling" : ""} ${isAlive ? "" : "is-out"}`}
       aria-label={isAlive ? "Tend the fire" : "Light the fire"}
       data-tooltip={tooltip}
     >
-      <Poller onUpdate={refresh} interval={2000} />
       <FlameMark alive={isAlive} />
       <span className="fire-stats">
         <span className="fire-count">{state.clicks}</span>
@@ -105,7 +127,7 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
           ·
         </span>
         <span className="fire-time" suppressHydrationWarning>
-          {formatCountdown(remainingMs)}
+          {display}
         </span>
       </span>
     </button>

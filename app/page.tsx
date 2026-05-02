@@ -2,32 +2,31 @@ import Link from "next/link";
 import { NavBar } from "@/components/nav-bar";
 import { getHomepagePatterns } from "@/lib/patterns";
 import { PatternCard } from "@/components/pattern-card";
+import { PrimitiveDiagrams } from "@/components/primitive-diagrams";
 import { CodeSnippet } from "@/components/code-snippet";
 import { SectionHeader } from "@/components/section-header";
-import { InstallCta } from "@/components/install-cta";
+import { InlineInstall } from "@/components/inline-install";
 import { Colophon } from "@/components/colophon";
 import { PropertyList, type PropertyItem } from "@/components/property-list";
 import { LINKS } from "@/lib/links";
 
 export const dynamic = "force-dynamic";
 
-const HERO_SOURCE = `// handler checks state, retries on failure
-dk.handle("remind", {
-  handler: async ({ key }) => {
-    const user = await db.users.find(key);
-    if (user.onboarded) return;
-    await sendEmail(user.email, "heads up");
-  },
-  retry: {
-    attempts: 5,
-    backoff: "exponential",
-  },
+const TASTE_SOURCE = `// when a user signs up, schedule a reminder for 24h later
+app.post("/signup", async (req, res) => {
+  const user = await createUser(req.body);
+  await dk.schedule("remind-onboarding", {
+    key: user.id,
+    delay: "24h",
+  });
+  res.json({ ok: true });
 });
 
-// schedule it for 24 hours from now
-await dk.schedule("remind", {
-  key: "user_123",
-  delay: "24h",
+// the DelayKit handler runs at the scheduled time
+dk.handle("remind-onboarding", async ({ key }) => {
+  const user = await db.users.find(key);
+  if (user.onboarded) return;
+  await sendEmail(user.email, "ready to finish setup?");
 });`;
 
 const PROPERTIES: PropertyItem[] = [
@@ -127,7 +126,7 @@ const RUNTIMES: PropertyItem[] = [
     body: (
       <>
         Vercel, Lambda. A cron route calls <code>dk.poll()</code> on a schedule
-        to drain due jobs, well inside the 10s function limit. Postgres only.{" "}
+        to drain due jobs. Postgres only.{" "}
         <a href={LINKS.githubDeploy}>See the deploy guide&nbsp;↗</a>
       </>
     ),
@@ -192,22 +191,31 @@ export default function Home() {
             Reminders, expirations, retries, debounces, and agent resumes.
             Backed by Postgres or SQLite.
           </p>
-          <InstallCta
-            secondary={
-              <a href="#patterns" className="hero-down">
-                ↓&nbsp; What you can do with it
-              </a>
-            }
-          />
+          <InlineInstall />
+          <div className="hero-actions">
+            <a className="cta cta-primary" href={LINKS.github}>
+              View on GitHub
+              <span aria-hidden="true"> ↗</span>
+            </a>
+            <a href="#patterns" className="hero-down">
+              ↓&nbsp; What you can do with it
+            </a>
+          </div>
         </div>
 
         <div className="hero-right">
-          <CodeSnippet source={HERO_SOURCE} className="hero-code" />
+          <PrimitiveDiagrams />
         </div>
       </section>
 
+      {/* CODE TASTE */}
+      <section className="taste reveal reveal-2">
+        <SectionHeader eyebrow="Code" title="What it looks like" />
+        <CodeSnippet source={TASTE_SOURCE} className="taste-snippet" />
+      </section>
+
       {/* PATTERNS GRID */}
-      <section className="patterns reveal reveal-2" id="patterns">
+      <section className="patterns reveal reveal-3" id="patterns">
         <SectionHeader eyebrow="Patterns" title="What you can do with it" />
         <div className="pattern-grid">
           {homepagePatterns.map((pattern) => (
@@ -220,7 +228,7 @@ export default function Home() {
       </section>
 
       {/* PROPERTIES */}
-      <section className="properties reveal reveal-3">
+      <section className="properties reveal reveal-4">
         <SectionHeader
           eyebrow="Properties"
           title="What DelayKit handles"
@@ -229,19 +237,19 @@ export default function Home() {
       </section>
 
       {/* WHERE IT RUNS — STORES */}
-      <section className="deploy reveal reveal-3" id="stores">
+      <section className="deploy reveal reveal-4" id="stores">
         <SectionHeader eyebrow="Stores" title="Pick a store" />
         <PropertyList items={STORES} />
       </section>
 
       {/* WHERE IT RUNS — RUNTIMES */}
-      <section className="deploy reveal reveal-3" id="runtime">
-        <SectionHeader eyebrow="Runtime shapes" title="Pick a runtime" />
+      <section className="deploy reveal reveal-4" id="runtime">
+        <SectionHeader eyebrow="Runtimes" title="Pick a runtime" />
         <PropertyList items={RUNTIMES} />
       </section>
 
       {/* BOUNDARIES */}
-      <section className="properties reveal reveal-3" id="boundaries">
+      <section className="properties reveal reveal-4" id="boundaries">
         <SectionHeader
           eyebrow="Boundaries"
           title="When not to use it"

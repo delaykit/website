@@ -370,13 +370,24 @@ body::before {
 
 .flame-mark-alive {
   color: var(--color-stamp);
-  animation: flame-flicker 1.6s ease-in-out infinite;
 }
 
 .flame-mark-out {
   color: var(--color-ink-faint);
   opacity: 0.55;
-  /* Pulse to draw attention — subtle, says "still here, light me" */
+}
+
+/* Flicker / pulse only while the cursor is hovering or the badge is
+   keyboard-focused — idle CPU is zero. The icon still differentiates
+   alive (red) vs out (dim) by color and opacity alone. */
+.fire-badge:hover .flame-mark-alive,
+.fire-badge:focus-visible .flame-mark-alive {
+  animation: flame-flicker 1.6s ease-in-out infinite;
+}
+
+.fire-badge:hover .flame-mark-out,
+.fire-badge:focus-visible .flame-mark-out {
+  /* Pulse says "still here, light me." */
   animation: ember-pulse 2.4s ease-in-out infinite;
 }
 
@@ -448,9 +459,16 @@ body::before {
 /* ---- SECTIONS (patterns, properties, deploy) ---- */
 
 .patterns,
-.properties {
+.properties,
+.taste {
   margin-top: 5rem;
   margin-bottom: 5rem;
+}
+
+/* Code taste snippet — kept narrower than the full container so the
+   line-length stays readable, matching the pattern detail page. */
+.taste-snippet {
+  max-width: 36rem;
 }
 
 .section-eyebrow {
@@ -879,7 +897,10 @@ body::before {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 2rem;
-  align-items: start;
+  /* `stretch` so both columns share the row's full height. The plate
+     is shorter than the left column's stack, but `.hero-right`'s
+     flex layout below centers it within the stretched cell. */
+  align-items: stretch;
 }
 
 @media (min-width: 760px) {
@@ -901,7 +922,8 @@ body::before {
 
 .hero-right {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -953,6 +975,221 @@ body::before {
   font-size: 0.82rem !important;
   padding: 1rem 1.2rem !important;
   width: 100%;
+}
+
+/* ---- HERO INSTRUMENT PLATE ---- */
+
+.plate {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.plate-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 26rem;
+  overflow: visible;
+}
+
+/* Strokes — engraved-line style. All strokes use non-scaling-stroke so
+   they stay crisp regardless of how the SVG is sized. */
+.plate-stroke,
+.plate-stroke-bold,
+.plate-stroke-accent,
+.plate-hatch {
+  vector-effect: non-scaling-stroke;
+}
+
+.plate-stroke {
+  stroke: var(--color-ink-soft);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.plate-stroke-bold {
+  stroke: var(--color-ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.plate-stroke-accent {
+  stroke: var(--color-stamp);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.plate-hatch {
+  stroke: var(--color-ink-faint);
+  stroke-width: 0.5;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.plate-fill {
+  fill: var(--color-ink);
+}
+
+.plate-fill-accent {
+  fill: var(--color-stamp);
+}
+
+.plate-knockout {
+  fill: var(--color-paper);
+  stroke: none;
+}
+
+.plate-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-anchor: middle;
+  fill: var(--color-stamp);
+}
+
+.plate-title {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 500;
+  text-anchor: middle;
+  fill: var(--color-ink);
+  letter-spacing: 0.02em;
+}
+
+.plate-label {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 500;
+  text-anchor: middle;
+  fill: var(--color-ink);
+}
+
+
+/* Animation. Pure CSS keyframes on transforms / opacity — GPU-composited,
+   no JS, no extra payload over the static SVG. Each rotating part lives
+   in a group whose local origin sits on its pivot, so the rotation pivot
+   is just the bottom (pendulum) or top (clapper) of the group's bbox. */
+
+/* Stepped motion: 30 discrete jumps per cycle (~16 fps) instead of the
+   browser's smooth 60 fps interpolation. Halves paint events at the cost
+   of slightly mechanical motion — which suits an antique instrument. */
+.plate-pendulum {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: plate-pendulum-swing 1.9s steps(30, jump-none) infinite;
+}
+
+.plate-clapper {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: plate-clapper-swing 1.9s steps(30, jump-none) infinite;
+}
+
+/* Steps animation: 60 discrete jumps of 6° each, one per second, just
+   like a real chronometer ticks. Far cheaper than a continuous sweep —
+   the browser repaints once per second instead of once per frame. */
+.plate-second-hand {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: plate-second-sweep 60s steps(60) infinite;
+}
+
+.plate-second-hand-needle {
+  fill: var(--color-ink-soft);
+  opacity: 0.7;
+}
+
+.plate-ring {
+  opacity: 0.35;
+  animation: plate-ring-pulse 1.9s ease-out infinite;
+}
+
+.plate-ring-1 { animation-delay: 0s; }
+.plate-ring-2 { animation-delay: 0.18s; }
+.plate-ring-3 { animation-delay: 0.36s; }
+
+/* The plate is a still engraving by default. Animations only run while
+   the cursor hovers the SVG — idle CPU is zero, no JS required. This
+   block sits AFTER every `animation:` shorthand declaration above so
+   the shorthand can't reset `animation-play-state` back to `running`. */
+.plate-pendulum,
+.plate-clapper,
+.plate-second-hand,
+.plate-ring {
+  animation-play-state: paused;
+}
+
+.plate-svg:hover .plate-pendulum,
+.plate-svg:hover .plate-clapper,
+.plate-svg:hover .plate-second-hand,
+.plate-svg:hover .plate-ring {
+  animation-play-state: running;
+}
+
+.plate-svg:hover .plate-pendulum,
+.plate-svg:hover .plate-clapper,
+.plate-svg:hover .plate-second-hand {
+  will-change: transform;
+}
+
+@keyframes plate-pendulum-swing {
+  0%, 100% { transform: rotate(-22deg); }
+  50%      { transform: rotate(22deg); }
+}
+
+@keyframes plate-clapper-swing {
+  0%, 100% { transform: rotate(-6deg); }
+  50%      { transform: rotate(6deg); }
+}
+
+@keyframes plate-second-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Rings flare brightest at the moments the clapper hits its extremes
+   (0% and 50% of the cycle). Stagger plays them as outward emanation. */
+@keyframes plate-ring-pulse {
+  0%   { opacity: 1; }
+  35%  { opacity: 0.15; }
+  60%  { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plate-pendulum,
+  .plate-clapper,
+  .plate-ring,
+  .plate-second-hand {
+    animation: none;
+  }
+  .plate-ring {
+    opacity: 0.6;
+  }
+}
+
+/* Touch-primary devices (phones, most tablets) skip the animations
+   entirely — phones thermally-throttle aggressively and the static plate
+   reads beautifully on its own. Detected via the standard pointer/hover
+   media queries (no UA sniffing). */
+@media (hover: none) and (pointer: coarse) {
+  .plate-pendulum,
+  .plate-clapper,
+  .plate-ring,
+  .plate-second-hand {
+    animation: none;
+    will-change: auto;
+  }
+  .plate-ring {
+    opacity: 0.6;
+  }
 }
 
 @media (min-width: 760px) {
@@ -1014,6 +1251,60 @@ body::before {
 
 .install-cmd {
   flex: 1;
+}
+
+/* Compact single-line install pill — both commands on one line, each
+   preceded by its own `$` prompt. The outer flex `gap` separates the
+   two `(prompt + cmd)` pairs; the pair's own gap separates the prompt
+   from its command. Each command spans `user-select: all` so a single
+   click selects just that command's text — perfect for copy. */
+.install-inline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  padding: 0.65rem 0.95rem;
+  margin-bottom: 2.25rem;
+  box-shadow: 3px 3px 0 var(--color-stamp);
+  cursor: text;
+  white-space: nowrap;
+  /* Sit on its own line in the column so the next flex item (the action
+     row) is below it, not flowed inline next to it. */
+  align-self: flex-start;
+}
+
+.install-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.install-inline .install-cmd {
+  cursor: pointer;
+}
+
+.install-inline .install-cmd:focus-visible {
+  outline: 1px dashed var(--color-stamp-soft);
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .install-inline {
+    background: var(--color-paper-dark);
+    color: var(--color-ink);
+    border: 1px solid var(--color-rule);
+    box-shadow: 3px 3px 0 var(--color-stamp);
+  }
+}
+
+[data-theme="dark"] .install-inline {
+  background: var(--color-paper-dark);
+  color: var(--color-ink);
+  border: 1px solid var(--color-rule);
+  box-shadow: 3px 3px 0 var(--color-stamp);
 }
 
 .hero-actions {
@@ -1113,7 +1404,8 @@ body::before {
   .hero-right {
     order: 1;
   }
-  .hero-split .install-line {
+  .hero-split .install-line,
+  .hero-split .install-inline {
     display: none;
   }
   .hero-actions {
