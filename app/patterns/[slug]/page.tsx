@@ -13,8 +13,6 @@ import {
   patterns,
 } from "@/lib/patterns";
 
-export const dynamic = "force-dynamic";
-
 export function generateStaticParams() {
   return patterns.map((pattern) => ({ slug: pattern.slug }));
 }
@@ -30,6 +28,7 @@ export async function generateMetadata({
   return {
     title: `${pattern.seo.title}. DelayKit.`,
     description: pattern.seo.description,
+    alternates: { canonical: `/patterns/${slug}` },
   };
 }
 

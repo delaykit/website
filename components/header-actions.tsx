@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-const COOKIE_KEY = "delaykit-theme";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+// Theme override is stored in localStorage and applied synchronously by
+// a tiny inline script in the root layout's <head> before paint. See
+// `app/layout.tsx`.
+const STORAGE_KEY = "delaykit-theme";
 
 type Theme = "light" | "dark";
 
@@ -29,7 +31,11 @@ export function HeaderActions() {
     const next: Theme = theme === "dark" ? "light" : "dark";
     setTheme(next);
     document.documentElement.dataset.theme = next;
-    document.cookie = `${COOKIE_KEY}=${next}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      // localStorage may be blocked (private mode, etc.) — fail silently.
+    }
   };
 
   return (

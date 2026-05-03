@@ -6,12 +6,11 @@ import { SectionHeader } from "@/components/section-header";
 import { Colophon } from "@/components/colophon";
 import { patterns } from "@/lib/patterns";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "Patterns. DelayKit.",
   description:
     "A catalog of things you can do with DelayKit. Reminders, expirations, agent timeouts, debounce, throttle, retries, and cleanup. Each with concrete code.",
+  alternates: { canonical: "/patterns" },
 };
 
 export default function PatternsIndex() {

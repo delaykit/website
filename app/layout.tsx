@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Crimson_Pro, JetBrains_Mono } from "next/font/google";
-import { cookies } from "next/headers";
 import "./globals.css";
 
 const crimson = Crimson_Pro({
@@ -38,24 +37,27 @@ export const metadata: Metadata = {
   },
 };
 
-// Theme override is stored in a cookie so the server can apply it
-// before paint. If no cookie is set, the @media query in globals.css
-// picks up the OS default automatically.
-export default async function RootLayout({
+// Theme override is read from localStorage by an inline script that runs
+// before the first paint, so we can apply `data-theme` synchronously.
+// This used to be a server-side cookie read, but cookies() forces every
+// page in the layout into dynamic rendering — which blocks static
+// generation and hurts SEO. localStorage + inline script gets the same
+// no-FOUC behavior without a request-time dependency.
+const themeBootScript = `(function(){try{var t=localStorage.getItem('delaykit-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
+
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const stored = cookieStore.get("delaykit-theme")?.value;
-  const themeAttr = stored === "light" || stored === "dark" ? stored : undefined;
-
   return (
     <html
       lang="en"
       className={`${crimson.variable} ${jetbrains.variable} h-full`}
-      data-theme={themeAttr}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body className="min-h-full">{children}</body>
     </html>
   );

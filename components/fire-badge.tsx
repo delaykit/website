@@ -24,8 +24,11 @@ type FireState = {
   firesAt: string | null;
 };
 
-export function FireBadge({ initialState }: { initialState: FireState }) {
-  const [state, setState] = useState<FireState>(initialState);
+export function FireBadge() {
+  // State starts as null until the first fetch resolves. While null, the
+  // badge renders nothing — a brief absence is preferable to flashing
+  // misleading "0 · out" content for users on slow connections.
+  const [state, setState] = useState<FireState | null>(null);
   // `now` is intentionally not on a timer. We bump it on user signals
   // (visibility change / window focus / button hover / click), which is
   // when the displayed time actually needs to be fresh. An idle page
@@ -40,6 +43,7 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
     (data: { current: FireState }, opts?: { fromClick?: boolean }) => {
       if (!opts?.fromClick && Date.now() < cooldownUntil.current) return;
       setState((prev) =>
+        prev !== null &&
         prev.clicks === data.current.clicks &&
         prev.firesAt === data.current.firesAt
           ? prev
@@ -64,6 +68,12 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
     }
   }, [applyServerState]);
 
+  // Initial fetch on mount — the badge has no SSR'd state anymore so the
+  // first render shows nothing until this resolves.
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
   // Refresh when the user re-engages with the page — no idle polling.
   useEffect(() => {
     const onVisibility = () => {
@@ -87,7 +97,7 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
     // Optimistic update — the server response will reconcile.
     const t = Date.now();
     setState((prev) => ({
-      clicks: prev.clicks + 1,
+      clicks: (prev?.clicks ?? 0) + 1,
       firesAt: new Date(t + WAIT_MS).toISOString(),
     }));
     setNow(t);
@@ -102,6 +112,11 @@ export function FireBadge({ initialState }: { initialState: FireState }) {
       setTimeout(() => setCooling(false), COOLDOWN_MS);
     }
   }, [applyServerState]);
+
+  // Render nothing until the first fetch resolves. If it never does (DB
+  // unreachable, etc.) the badge stays hidden — matching the previous
+  // server-side `dbAvailable` guard.
+  if (state === null) return null;
 
   const firesAt = state.firesAt ? new Date(state.firesAt).getTime() : null;
   const isAlive = firesAt !== null && firesAt > now;

@@ -8,9 +8,12 @@ import { SectionHeader } from "@/components/section-header";
 import { InlineInstall } from "@/components/inline-install";
 import { Colophon } from "@/components/colophon";
 import { PropertyList, type PropertyItem } from "@/components/property-list";
+import type { Metadata } from "next";
 import { LINKS } from "@/lib/links";
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 const TASTE_SOURCE = `// when a user signs up, schedule a reminder for 24h later
 app.post("/signup", async (req, res) => {
